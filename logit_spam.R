@@ -1,7 +1,4 @@
 library(tm)
-library(stringr)
-library(plyr)
-library(kernlab)
 library(glmnet)
 
 spam.data <- 'SpamAssassin/spam/'
@@ -62,7 +59,7 @@ create.corpus <- function(data)
     {
         data.corp <- Corpus(VectorSource(data))
         data.corp <- tm_map(data.corp, content_transformer(tolower))
-
+t
         data.corp <- tm_map(data.corp, removePunctuation)
         data.corp <- tm_map(data.corp, removeNumbers)
         data.corp <- tm_map(data.corp, removeWords, stopwords('english'))
