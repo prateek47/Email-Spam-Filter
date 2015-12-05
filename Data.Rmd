@@ -7,7 +7,7 @@ output: html_document
 
 Data Extraction
 -------------------
-We used the datasets provided by SpamAssassin.
+We used the [datasets](https://spamassassin.apache.org/publiccorpus/) provided by SpamAssassin.
 The dataset contained 1898 spams and 5052 hams in mbox format.
 
 ```{r,eval=FALSE}
