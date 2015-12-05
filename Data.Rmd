@@ -1,0 +1,77 @@
+---
+title: DATA PROCESSING
+output: html_document
+---
+
+
+
+Data Extraction
+-------------------
+We used the datasets provided by SpamAssassin.
+The dataset contained 1898 spams and 5052 hams in mbox format.
+
+```{r,eval=FALSE}
+spam.data <- 'SpamAssassin/spam/'
+ham.data <- 'SpamAssassin/ham/'
+
+#Function to extract text data from email files
+extract_email <- function(path){
+  con <- file(path, open="rt", encoding="latin1")
+  text <- readLines(con)
+  if (is.numeric(which(text == "")[1]) && is.finite(which(text == "")[1]) && 
+      which(text == "")[1] < length(text)) {
+    msg <- text[seq(which(text == "")[1] + 1, length(text), 1)]
+  } else {
+    msg <- ""
+  } 
+  close(con)
+  return(paste(msg, collapse="\n"))
+}
+
+# reading all the spam emails
+spam.emails <- sapply(dir(spam.data), function(x){
+  extract_email(paste(spam.data,x,sep = ""))
+  })
+
+# reading all the ham emails
+ham.emails <- sapply(dir(ham.data), function(x){
+  extract_email(paste(ham.data,x,sep = ""))
+  })
+```
+
+Data Cleaning
+-----------------
+Most of the emails lot of html content and line breaks. So we cleaned them before
+moving to data modelling.
+``` {r}
+# removing html tags
+spam.emails=sapply(spam.emails,function(x) gsub('<[^>]*>','',x))
+ham.emails=sapply(ham.emails,function(x) gsub('<[^>]*>','',x))
+
+
+# removing line breaks
+spam.emails=sapply(spam.emails,function(x) gsub('\\n','',x))
+ham.emails=sapply(ham.emails,function(x) gsub('\\n','',x))
+```
+
+Train and Test data
+-----------------------
+To replicate real life conditions, it is important to keep the ratio of spam and
+ham at a ratio of 20:80. So we have to maintain this ratio in our training and test datasets. The SpamAssasin dataset has a spam ratio of 30%.
+
+``` {r}
+spam.emails.mod=spam.emails[sample(1:length(spam.emails),length(spam.emails)*2/3)]
+
+# dividing into trainng and test sets in the ratio 3:1
+spam.ind=sample(1:length(spam.emails.mod),ceiling(length(spam.emails.mod)*3/4))
+spam.train=spam.emails[spam.ind]
+spam.test=spam.emails[-spam.ind]
+# 698
+
+ham.ind=sample(1:length(ham.emails),ceiling(length(ham.emails)*3/4))
+ham.train=ham.emails[ham.ind]
+ham.test=ham.emails[-ham.ind]
+
+```
+
+
