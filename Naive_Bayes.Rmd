@@ -98,7 +98,7 @@ get.results <- function(bool.vector)
 
 To create training data, all spam emails are read into a single vector then a Document Term matrix is generate to provide feature set for training data. From the Document Term Matrix the term density and occurance rates are calculated. This is done indentically to create training sets from spam and ham, but only the code for spam is shown below.
 ```{r,message='false'}
-# Get all the SPAM-y email into a single vector
+# Get all the SPAM email into a single vector
 spam.docs <- dir(spam.path)
 spam.docs <- spam.docs[which(spam.docs != "cmds")]
 all.spam <- sapply(spam.docs,
