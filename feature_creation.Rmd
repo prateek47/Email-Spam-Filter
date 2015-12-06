@@ -1,0 +1,128 @@
+---
+title: CREATING FEATURES USING WORDS 
+output: html_document
+---
+# Creating document corpus and basic text cleaning
+```{r}
+create.corpus <- function(data)
+    {
+        data.corp <- Corpus(VectorSource(data))
+        data.corp <- tm_map(data.corp, content_transformer(tolower))
+        data.corp <- tm_map(data.corp, removePunctuation)
+        data.corp <- tm_map(data.corp, removeNumbers)
+        data.corp <- tm_map(data.corp, removeWords, stopwords('english'))
+        data.corp <- tm_map(data.corp, stripWhitespace)
+    }
+
+```
+# Generating probabilities of word appearing in ham or spam
+``` {r}
+generate.probs <- function(data.corp)
+    {
+         # creating the term document matrix
+        data.tdm <- TermDocumentMatrix(data.corp,
+                                       control = list(wordLengths=c(4,15),
+                                       bounds=list(global=c(5,Inf))))
+
+
+        ## frequeny of words in the corpus
+        freq <- rowSums(as.matrix(data.tdm))
+
+         # creating a dataframe with words and their frequencies
+        data.df <- data.frame(word=data.tdm$dimnames$Terms,
+                              frequency=freq)
+
+        data.mat <- as.matrix(data.tdm)
+        # adding the percentage of times a term occurs in spam emails, i.e. the probability of
+        # occurence of term
+        word.occurences <- sapply(1:nrow(data.mat),
+                                  function(x){
+                                      length(which(data.mat[x,]>0))/ncol(data.mat)
+                                  })
+
+        data.df$occurence <- word.occurences
+
+         # probability of the word occurence in the entire corpus
+        word.prob <- sapply(1:nrow(data.mat),
+                            function(x){
+                                data.df$frequency[x]/sum(data.df$frequency)
+                            })
+
+        data.df$density <- word.prob
+         # removing the irrelevant words
+        data.df <- data.df[-(1:7), ]
+
+        return (data.df)
+    }
+
+```
+``` {r}
+# creating the corpus for spams
+spam.corp=create.corpus(spam.train)
+
+# generate probabilities for spam words
+spam.df=generate.probs(spam.corp)
+
+# creating the corpus for hams
+ham.corp <- create.corpus(ham.train)
+
+# generate probabilities for ham words
+ham.df=generate.probs(ham.corp)
+```
+
+# Generating spamicity values for each word
+
+Spamacity of a word is given by the following formulae  
+$$Pr(S|W) = \frac{\Pr(W|S)}{\Pr(W|S) + \Pr(W|H)}$$
+
+Where  
+Pr(W|S)is the  probability of word appears in spam  
+Pr(W|H)is the  probability of word appears in ham  
+
+
+```{r}
+match.df=merge(spam.df[c('word','density')],ham.df[c('word','density')],by='word',all.x=F,all.y=F)  
+colnames(match.df) <- c("word", "Prob.spam", "Prob.ham")  
+match.df$spamicity=match.df$Prob.spam/(match.df$Prob.spam+match.df$Prob.ham)
+```
+Using spamicity values for each word, we can pick out words that have a higher chance of appearing
+in spams or hams. But spamicity alone cannot be used to make this distinction. Because words that
+appear rarely appear in both spams and hams will also have high spamicity values.
+  
+So we have to use an additional filter, the difference between the probability of being a spam word
+and ham word should be high. This makes sure that we can use the word either to identify a spam or ham.
+``` {r}
+match.df$Pr.S_Pr.H <- abs(match.df$Prob.spam-match.df$Prob.ham)
+
+# the words are ordered on basis of their spamicity value and difference in probs
+match.df.ord <- match.df[order(c(match.df$Pr.S_Pr.H, match.df$spamicity), decreasing = TRUE), ]  
+match.df.ord <- match.df.ord[complete.cases(match.df.ord),]
+```
+
+Now we pick the top 100 words from the list to be used as features for modelling purpose
+
+`r top.100.spam.words <- as.character(match.df.ord$word[1:100])`
+
+
+#Using synonyms of the top spam words
+
+To account for similar meaning words that might have been missing from our training set,
+we added synonyms for the top 100 spam words.
+The package wordnet provides synonyms for english words.
+
+
+`r library(quanteda)`
+`r library(wordnet)`
+``` {r}
+# retrieving verb and noun synonyms for the words
+verbs=sapply(top.100.spam.words,function (x) {synonyms(x,"VERB")})
+nouns=sapply(top.100.spam.words,function (x) {synonyms(x,"NOUN")})
+
+#combining verbs, nouns and the words themself 
+syns=mapply(c,verbs,nouns,top.100.spam.words)
+
+# converting them into a dictionary(from package quanteda)
+myDict=dictionary(syns)
+head(myDict,2)
+
+```
