@@ -1,84 +1,13 @@
-library(tm)
+
 library(glmnet)
+library(ggplot2)
 source('Codes/data.R')
+source('Codes/feature_creation.R')
 
 
-# creating the corpus for spams
-create.corpus <- function(data)
-    {
-        data.corp <- Corpus(VectorSource(data))
-        data.corp <- tm_map(data.corp, content_transformer(tolower))
-t
-        data.corp <- tm_map(data.corp, removePunctuation)
-        data.corp <- tm_map(data.corp, removeNumbers)
-        data.corp <- tm_map(data.corp, removeWords, stopwords('english'))
-        data.corp <- tm_map(data.corp, stripWhitespace)
-    }
-
-spam.corp=create.corpus(spam.train)
-
-generate.probs <- function(data.corp)
-    {
-# creating the term document matrix
-data.tdm <- TermDocumentMatrix(data.corp, control = list(wordLengths=c(4,15), bounds=list(global=c(5,Inf))))
-
-
-## frequeny of words in the corpus
-freq <- rowSums(as.matrix(data.tdm))
-
-# creating a dataframe with words and their frequencies
-data.df <- data.frame(word=data.tdm$dimnames$Terms, frequency=freq)
-
-data.mat <- as.matrix(data.tdm)
-# adding the percentage of times a term occurs in spam emails, i.e. the probability of
-# occurence of term
-word.occurences <- sapply(1:nrow(data.mat), function(x){
-  length(which(data.mat[x,]>0))/ncol(data.mat)
-})
-
-data.df$occurence <- word.occurences
-
-# probability of the word occurence in the entire corpus
-word.prob <- sapply(1:nrow(data.mat), function(x){
-  data.df$frequency[x]/sum(data.df$frequency)
-})
-
-data.df$density <- word.prob
-# removing the irrelevant words
-data.df <- data.df[-(1:7), ]
-
-return (data.df)
-}
-
-spam.df=generate.probs(spam.corp)
-
-# creating the corpus for hams
-ham.corp <- create.corpus(ham.train)
-
-#generate probs for ham
-ham.df=generate.probs(ham.corp)
-
-# spamicity
-match.df=merge(spam.df[c('word','density')],ham.df[c('word','density')],by='word',all.x=F,all.y=F)
-colnames(match.df) <- c("word", "Prob.spam", "Prob.ham")
-match.df$spamicity=match.df$Prob.spam/(match.df$Prob.spam+match.df$Prob.ham)
-match.df$Pr.S_Pr.H <- abs(match.df$Prob.spam-match.df$Prob.ham)
-match.df.ord <- match.df[order(c(match.df$Pr.S_Pr.H, match.df$spamicity), decreasing = TRUE), ]
-match.df.ord <- match.df.ord[complete.cases(match.df.ord),]
-
-# top 100 words to be used as features for logistic 
-top.100.spam.words <- as.character(match.df.ord$word[1:90])
-
-#creating feature vector for logsitc regression
-emails=DocumentTermMatrix(c(spam.corp,ham.corp),control = list(dictionary=top.100.spam.words))
-emails=data.frame(as.matrix(emails))
-emails[emails>0]=1
-
-emails$Spam.Ind=1
-emails$Spam.Ind[(length(spam.train)+1):nrow(emails)]=0
 
 ## running logistic regresion model
-lo1=glm(Spam.Ind~.,emails,family='binomial')
+lo1=glm(Spam.Ind~.,tr.emails.df,family='binomial')
 
 
 ## running lasso logistic model
@@ -90,16 +19,62 @@ ls1=cv.glmnet(x,emails$Spam.Ind,nfolds=5,alpha=1,family='binomial')
 # on test data
 emails.test=c(spam.test,ham.test)
 emails.test.corp=create.corpus(emails.test)
-emails.test.tdm=DocumentTermMatrix(emails.test.corp,control = list(dictionary=top.100.spam.words))
-emails.test.df=data.frame(as.matrix(emails.test.tdm))
+emails.test.corp <- corpus(emails.test.corp)
+emails.test.dfm <- dfm(emails.test.corp, verbose = FALSE, toLower = TRUE, removeNumbers = TRUE,
+            removePunct = TRUE, valuetype = "glob", ignoredFeatures = stopwords("english"))
+
+emails.test.df <- data.frame(as.matrix(applyDictionary(emails.test.dfm, synDict, valuetype = "glob")))
+
 emails.test.df[emails.test.df>0]=1
+
 emails.test.df$Spam.Ind=1
 emails.test.df$Spam.Ind[(length(spam.test)+1):nrow(emails.test.df)]=0
+
 p=predict(lo1,emails.test.df,type='response')
 p=as.vector(round(p,0))
 
 # metrics
-table(round(p,0),emails.test.df[,'Spam.Ind'])
-#       0    1
-#  0 1650  144
-#  1   50  554
+t=table(round(p,0),emails.test.df[,'Spam.Ind'])
+#                  Ham Spam
+#  Predicted Ham  1229   56
+#  Predicted Spam   34  260
+
+
+# ROC curve
+# threshold values for which plot is to be drawn
+thresh=seq(0.2,0.8,0.001)
+
+# tp and fp values for each threshold value
+roc.value <- function (x)
+    {   pred=p
+        pred[pred>x]=1
+        pred[pred<x]=0
+        t=table(pred,emails.test.df[,'Spam.Ind'])
+        tp=t[2,2]
+        fp=t[2,1]
+        return(c(x,tp,fp))
+          }
+values=lapply(thresh,roc.value)
+values=unlist(values)
+values.df=data.frame(threshold=values[c(TRUE,FALSE,FALSE)],tp=values[c(FALSE,TRUE,FALSE)],fp=values[c(FALSE,FALSE,TRUE)])
+
+
+
+pl <- ggplot(data=values.df,aes(x=fp,y=tp),geom='smooth',span=0.5)+stat_smooth()
+pl <- pl+ geom_point(data=values.df[c(50,300,550),],aes(x=fp,y=tp,colour=as.factor(round(threshold,2))),size=7)
+pl <- pl + xlab('False Positive') +ylab('True Positive')
+pl <- pl + scale_colour_discrete(name='THRESHOLD VALUE') + ggtitle('ROC CURVE') + theme(plot.title=element_text(face='bold'))
+print(pl)
+
+
+
+
+
+
+
+
+
+
+
+
+
