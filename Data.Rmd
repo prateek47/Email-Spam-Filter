@@ -15,28 +15,31 @@ spam.data <- 'SpamAssassin/spam/'
 ham.data <- 'SpamAssassin/ham/'
 
 #Function to extract text data from email files
-extract_email <- function(path){
-  con <- file(path, open="rt", encoding="latin1")
-  text <- readLines(con)
-  if (is.numeric(which(text == "")[1]) && is.finite(which(text == "")[1]) && 
-      which(text == "")[1] < length(text)) {
-    msg <- text[seq(which(text == "")[1] + 1, length(text), 1)]
-  } else {
-    msg <- ""
-  } 
-  close(con)
-  return(paste(msg, collapse="\n"))
-}
+extract_email <- function(path)
+ {
+    con <- file(path, open="rt", encoding="latin1")
+    text <- readLines(con)
+    if (is.numeric(which(text == "")[1]) && is.finite(which(text == "")[1]) && 
+        which(text == "")[1] < length(text)) {
+        msg <- text[seq(which(text == "")[1] + 1, length(text), 1)]
+    } else {
+        msg <- ""
+    } 
+    close(con)
+    return(paste(msg, collapse="\n"))
+ }
 
 # reading all the spam emails
-spam.emails <- sapply(dir(spam.data), function(x){
-  extract_email(paste(spam.data,x,sep = ""))
-  })
+spam.emails <- sapply(dir(spam.data), function(x)
+                            {
+                              extract_email(paste(spam.data,x,sep = ""))
+                            })
 
 # reading all the ham emails
-ham.emails <- sapply(dir(ham.data), function(x){
-  extract_email(paste(ham.data,x,sep = ""))
-  })
+ham.emails <- sapply(dir(ham.data),function(x)
+                                {
+                                  extract_email(paste(ham.data,x,sep = ""))
+                                 })
 ```
 
 Data Cleaning
