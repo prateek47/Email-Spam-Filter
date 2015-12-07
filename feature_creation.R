@@ -85,7 +85,7 @@ synDict=dictionary(syns)
 
 #creating feature vector for modelling
 tr.emails <- corpus(spam.corp)+corpus(ham.corp)
-tr.emails.dfm <- dfm(emails.tr, verbose = FALSE, toLower = TRUE, removeNumbers = TRUE,
+tr.emails.dfm <- dfm(tr.emails, verbose = FALSE, toLower = TRUE, removeNumbers = TRUE,
             removePunct = TRUE, valuetype = "glob", ignoredFeatures = stopwords("english"))
 
 tr.emails.df <- data.frame(as.matrix(applyDictionary(tr.emails.dfm, synDict, valuetype = "glob")))
