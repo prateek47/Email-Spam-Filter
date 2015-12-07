@@ -126,3 +126,23 @@ myDict=dictionary(syns)
 head(myDict,2)
 
 ```
+# creating feature vectors for modelling
+``` {r,eval=FALSE}
+#creating a quanteda corpus for applying dictionary
+tr.emails <- corpus(spam.corp)+corpus(ham.corp)
+
+#creating a document feature matrix
+tr.emails.dfm <- dfm(tr.emails, verbose = FALSE, toLower = TRUE, removeNumbers = TRUE,
+            removePunct = TRUE, valuetype = "glob", ignoredFeatures = stopwords("english"))
+
+#creating the feature vector using the synonyms as a dictionary
+tr.emails.df <- data.frame(as.matrix(applyDictionary(tr.emails.dfm, synDict, valuetype = "glob")))
+
+#if frequency of words is more than 1, changing it to 1 (we want binary values for features)
+tr.emails.df[tr.emails.df>0]=1
+
+#creating the indicator variable
+tr.emails.df$Spam.Ind=1
+tr.emails.df$Spam.Ind[(length(spam.train)+1):nrow(tr.emails.df)]=0
+
+```
