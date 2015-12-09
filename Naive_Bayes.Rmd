@@ -255,8 +255,34 @@ spam2.col <- get.results(subset(class.df, Type == "SPAM")$Class)
 
 class.res <- rbind(easyham2.col, hardham2.col, spam2.col)
 colnames(class.res) <- c("NOT SPAM", "SPAM")
-class.res
+class.res[c(1,2),]
 ```
 
+
+#### ROC Curve
+
+Plot an ROC curve for evaluation
+```{r}
+library(ROCR)
+
+
+#Get pr(spam) for everything
+
+ROC.Testing<- class.df[!c(class.df$Type == "EASYHAM"),]
+ROC.Testing$Pr.SPAM
+
+
+
+
+
+ROC.Testing$Type1= as.integer(ROC.Testing$Type)
+ROC.Testing$Type1= ROC.Testing$Type1-2
+ROC.Testing$Type1 #1 is spam
+
+
+pred = prediction(ROC.Testing$Pr.SPAM,ROC.Testing$Type1)
+perf= performance(pred,measure="tpr",x.measure="fpr")
+plot(perf,col=rainbow(10),colorize=T)
+```
 
 
