@@ -4,149 +4,13 @@
 library(kernlab)
 library(ROCR)
 library(klaR)
+library(glmnet)
 
 # creation of data
-source("ProjCod_data.R")
-
-#--------------------------------------------
-# Support Vector Machine
-
-# Applying linear kernal
-#svm.fit <- ksvm(Spam.Ind~ ., data = tr.emails.df, type="C-svc", kernel="vanilladot", C=100)
-svm.fit1 <- ksvm(Spam.Ind~ ., data = tr.emails.df, type="C-svc", kernel="vanilladot",cross=3, C=100, prob.model= TRUE)
-# applying k-fold cross validation, with k=3, k
-# Training error : 0.061845 
-# Cross validation error : 0.073858 
-# Number of Support Vectors : 620 (cost value is 100).
-
-# Predictions using the model
-
-# finding the labels
-svm.predict <- predict(svm.fit1, newdata= emails.test.df)
-# finding the probabilities
-svm.predict2 <- predict(svm.fit1, newdata= emails.test.df, type= "probabilities")
-
-# accuracy
-accuracy <- sum(svm.predict == emails.test.df[,"Spam.Ind"])/ nrow(emails.test.df)
-# .9302
-
-# creating a dataframe of label with their probabilities
-df <- data.frame(label=svm.predict, prob0=svm.predict2[,1], prob1=svm.predict2[,2])
-df$probabilities <- apply(df[,2:3], 1, max)
-
-# plotting ROC curve
-# 
-pred <- prediction(df$probabilities, df$label)
-# calculating the performance
-perf <- performance(pred, "tpr", "fpr")
-
-# ROC curve
-plot(perf,colorize = TRUE, main= "Linear Kernel with cost=100") 
-
-# AUC value
-auc <- attr(performance(pred ,"auc"), "y.values")
-#0.492
-#-------------------------------------------------------
-# Another model with different cost value
-
-svm.fit2 <- ksvm(Spam.Ind~ ., data = tr.emails.df, type="C-svc", kernel="vanilladot",cross=3, C=10, prob.model= TRUE)
-# applying k-fold cross validation, with k=3,
-# Number of Support Vectors : 610 , cost =10
-# Training error : 0.060056 
-# Cross validation error : 0.07488 
-# Predictions using the model
-
-# finding the labels
-svm.predict3 <- predict(svm.fit2, newdata= emails.test.df)
-# finding the probabilities
-svm.predict4 <- predict(svm.fit2, newdata= emails.test.df, type= "probabilities")
-
-# accuracy
-accuracy1 <- sum(svm.predict3 == emails.test.df[,"Spam.Ind"])/ nrow(emails.test.df)
-# .9302
-
-# creating a dataframe of label with their probabilities
-df1 <- data.frame(label=svm.predict3, prob0=svm.predict4[,1], prob1=svm.predict4[,2])
-df1$probabilities <- apply(df1[,2:3], 1, max)
-
-# plotting ROC curve
-# 
-pred1 <- prediction(df1$probabilities, df1$label)
-# calculating the performance
-perf1 <- performance(pred1, "tpr", "fpr")
-
-# ROC curve
-plot(perf1,colorize = TRUE, main= "Linear Kernel with cost=10") 
-
-# AUC value
-auc1 <- attr(performance(pred1 ,"auc"), "y.values")
-# 0.478
-#--------------------------------
-
-# Another model with Radial Basis kernel "Gaussian"
-
-svm.fit3 <- ksvm(Spam.Ind~ ., data = tr.emails.df, type="C-svc", kernel="rbfdot", kpar="automatic", cross=3, C=10, prob.model= TRUE)
-# applying k-fold cross validation, with k=3,
-# Number of Support Vectors : 1227, cost=10
-# Training error : 0.023 
-# Cross validation error : 0.062099
-
-# finding the labels
-svm.predict5 <- predict(svm.fit3, newdata= emails.test.df)
-# finding the probabilities
-svm.predict6 <- predict(svm.fit3, newdata= emails.test.df, type= "probabilities")
-
-# accuracy
-accuracy2 <- sum(svm.predict5 == emails.test.df[,"Spam.Ind"])/ nrow(emails.test.df)
-# .9547
-
-# creating a dataframe of label with their probabilities
-df2 <- data.frame(label=svm.predict5, prob0=svm.predict6[,1], prob1=svm.predict6[,2])
-df2$probabilities <- apply(df2[,2:3], 1, max)
-
-# plotting ROC curve
-# 
-pred2 <- prediction(df2$probabilities, df2$label)
-# calculating the performance
-perf2 <- performance(pred2, "tpr", "fpr")
-
-# ROC curve
-plot(perf2,colorize = TRUE, main= "Radial Basis kernel 'Gaussian' with C=10") 
-
-# AUC value
-auc2 <- attr(performance(pred2 ,"auc"), "y.values")
-# 0.412
-#-----------------------------------------
-
-# Naive Bayes
-
-# taking the prior distribution as 0.2
-naive.bayes1 <- NaiveBayes(tr.emails.df[,-101], grouping = as.factor(tr.emails.df$Spam.Ind), 
-                           prior=.2)
-
-# predicting using the naive bayes
-nb.prediction <- predict(naive.bayes1, emails.test.df[,-101], type= 'raw')
-nb.pred <- data.frame(nb.prediction)
-nb.pred$probabilities <- apply(nb.pred[,2:3], 1, max)
-# taking the probabilities of spams
-score.nb <- nb.pred$posterior.1
-# the actual labels in the testing data
-actual_class <- emails.test.df$Spam.Ind
-# 
-# calculating the prediction for ROC
-pred <- prediction(score.nb, actual_class)
-perf <- performance(pred, "tpr", "fpr")
-# plotting the ROC
-plot(perf,colorize = TRUE, main="The Naive Bayes Classifier") 
-# calculating the AUC value
-auc <- attr(performance(pred ,"auc"), "y.values")
-# 0.91
-
-# The raw accuracy
-accuracy.nb <- sum(nb.pred$class == emails.test.df[,"Spam.Ind"])/ nrow(emails.test.df)
-# 87.96
+source("Codes/ProjCod_data.R")
 
 #------------------------
+
 
 # Logistic Regression
 
@@ -187,11 +51,148 @@ t
 # ROC curve
 
 pred=prediction(logit.p,emails.test.df$Spam.Ind)
-perf=performance(pred,measure = "tpr", x.measure = "fpr")
-plot(perf,col=rainbow(10),colorize=T)
+lo.perf=performance(pred,measure = "tpr", x.measure = "fpr")
+plot(lo.perf,col=rainbow(10),colorize=T)
 logit.auc=performance(pred,measure='auc')
 
 
+#--------------------------------------------
+# Support Vector Machine
+
+# Applying linear kernal
+#svm.fit <- ksvm(Spam.Ind~ ., data = tr.emails.df, type="C-svc", kernel="vanilladot", C=100)
+svm.fit1 <- ksvm(Spam.Ind~ ., data = tr.emails.df, type="C-svc", kernel="vanilladot",cross=3, C=100, prob.model= TRUE)
+# applying k-fold cross validation, with k=3, k
+# Training error : 0.061845 
+# Cross validation error : 0.073858 
+# Number of Support Vectors : 620 (cost value is 100).
+
+# Predictions using the model
+
+# finding the labels
+svm.predict <- predict(svm.fit1, newdata= emails.test.df)
+# finding the probabilities
+svm.predict2 <- predict(svm.fit1, newdata= emails.test.df, type= "probabilities")
+
+# accuracy
+accuracy <- sum(svm.predict == emails.test.df[,"Spam.Ind"])/ nrow(emails.test.df)
+# .9302
+
+# creating a dataframe of label with their probabilities
+df <- data.frame(label=svm.predict, prob0=svm.predict2[,1], prob1=svm.predict2[,2])
+df$probabilities <- df[,3]
+
+# plotting ROC curve
+# 
+pred <- prediction(df$probabilities, emails.test.df$Spam.Ind)
+# calculating the performance
+perf <- performance(pred, "tpr", "fpr")
+
+# ROC curve
+plot(perf,colorize = TRUE, main= "Linear Kernel with cost=100") 
+
+# AUC value
+auc <- attr(performance(pred ,"auc"), "y.values")
+#0.9719507
+#-------------------------------------------------------
+# Another model with different cost value
+
+svm.fit2 <- ksvm(Spam.Ind~ ., data = tr.emails.df, type="C-svc", kernel="vanilladot",cross=3, C=10, prob.model= TRUE)
+# applying k-fold cross validation, with k=3,
+# Number of Support Vectors : 610 , cost =10
+# Training error : 0.060056 
+# Cross validation error : 0.07488 
+# Predictions using the model
+
+# finding the labels
+svm.predict3 <- predict(svm.fit2, newdata= emails.test.df)
+# finding the probabilities
+svm.predict4 <- predict(svm.fit2, newdata= emails.test.df, type= "probabilities")
+
+# accuracy
+accuracy1 <- sum(svm.predict3 == emails.test.df[,"Spam.Ind"])/ nrow(emails.test.df)
+# .9302
+
+# creating a dataframe of label with their probabilities
+df1 <- data.frame(label=svm.predict3, prob0=svm.predict4[,1], prob1=svm.predict4[,2])
+df1$probabilities <- df1[,3]
+
+# plotting ROC curve
+# 
+pred1 <- prediction(df1$probabilities, emails.test.df$Spam.Ind)
+# calculating the performance
+perf1 <- performance(pred1, "tpr", "fpr")
+
+# ROC curve
+plot(perf1,colorize = TRUE, main= "Linear Kernel with cost=10") 
+
+# AUC value
+auc1 <- attr(performance(pred1 ,"auc"), "y.values")
+# 0.97188
+#--------------------------------
+
+# Another model with Radial Basis kernel "Gaussian"
+
+svm.fit3 <- ksvm(Spam.Ind~ ., data = tr.emails.df, type="C-svc", kernel="rbfdot", kpar="automatic", cross=3, C=10, prob.model= TRUE)
+# applying k-fold cross validation, with k=3,
+# Number of Support Vectors : 1227, cost=10
+# Training error : 0.023 
+# Cross validation error : 0.062099
+
+# finding the labels
+svm.predict5 <- predict(svm.fit3, newdata= emails.test.df)
+# finding the probabilities
+svm.predict6 <- predict(svm.fit3, newdata= emails.test.df, type= "probabilities")
+
+# accuracy
+accuracy2 <- sum(svm.predict5 == emails.test.df[,"Spam.Ind"])/ nrow(emails.test.df)
+# .9547
+
+# creating a dataframe of label with their probabilities
+df2 <- data.frame(label=svm.predict5, prob0=svm.predict6[,1], prob1=svm.predict6[,2])
+df2$probabilities <- df2[,3]
+
+# plotting ROC curve
+# 
+pred2 <- prediction(df2$probabilities, emails.test.df$Spam.Ind)
+# calculating the performance
+perf2 <- performance(pred2, "tpr", "fpr")
+
+# ROC curve
+plot(perf2,colorize = TRUE, main= "Radial Basis kernel 'Gaussian' with C=10",add=T) 
+
+# AUC value
+auc2 <- attr(performance(pred2 ,"auc"), "y.values")
+# 0.980396
+#-----------------------------------------
+
+# Naive Bayes
+
+# taking the prior distribution as 0.2
+naive.bayes1 <- NaiveBayes(tr.emails.df[,-ncol(tr.emails.df)], grouping = as.factor(tr.emails.df$Spam.Ind), 
+                           prior=.2)
+
+# predicting using the naive bayes
+nb.prediction <- predict(naive.bayes1, emails.test.df[,-101], type= 'raw')
+nb.pred <- data.frame(nb.prediction)
+nb.pred$probabilities <- apply(nb.pred[,2:3], 1, max)
+# taking the probabilities of spams
+score.nb <- nb.pred$posterior.1
+# the actual labels in the testing data
+actual_class <- emails.test.df$Spam.Ind
+# 
+# calculating the prediction for ROC
+pred <- prediction(score.nb, actual_class)
+nb.perf <- performance(pred, "tpr", "fpr")
+# plotting the ROC
+plot(nb.perf,colorize = TRUE, main="The Naive Bayes Classifier") 
+# calculating the AUC value
+nb.auc <- attr(performance(pred ,"auc"), "y.values")
+# 0.91
+
+# The raw accuracy
+accuracy.nb <- sum(nb.pred$class == emails.test.df[,"Spam.Ind"])/ nrow(emails.test.df)
+# 87.96
 
 #------------------------
 
@@ -210,9 +211,33 @@ t
 # ROC curve
 
 pred=prediction(lda.p,emails.test.df$Spam.Ind)
-perf=performance(pred,measure = "tpr", x.measure = "fpr")
-plot(perf,col=rainbow(10),colorize=T)
+lda.perf=performance(pred,measure = "tpr", x.measure = "fpr")
+plot(lda.perf,col=rainbow(10),colorize=T)
 lda.auc=performance(pred,measure='auc')
 
 
+## VISUALIZATION
+png('roc_curve_svm')
+plot(perf,main="SVM",col='Red') 
+plot(perf1,col='Blue',add=T)
+plot(perf2,col='Green', main= "SVM",add=T)
+legend(0.5,.6,
+       c("Linear Kernel Cost=100", "Linear Kernel Cost=10","RBF Kernel"),
+       lty=c(1,1),
+       col=c('Red','Blue','Green')
+       )
+dev.off()
 
+
+png('roc_curve_all')
+plot(nb.perf,main="COMPARISON OF ALL MODELS",col='Red',lwd=2) 
+plot(perf2,col='Blue',add=T,lwd=2)
+plot(lo.perf,col='Green', main= "SVM",add=T,lwd=2)
+plot(lda.perf,col='Yellow', main= "SVM",add=T,lwd=2)
+legend(0.5,.6,
+       c("Naive Bayes", "SVM","Logistic","LDA"),
+       lty=c(1,1),
+       lwd=2,
+       col=c('Red','Blue','Green','Yellow')
+       )
+dev.off()
