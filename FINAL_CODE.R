@@ -169,7 +169,8 @@ auc2 <- attr(performance(pred2 ,"auc"), "y.values")
 # Naive Bayes
 
 # taking the prior distribution as 0.2
-naive.bayes1 <- NaiveBayes(tr.emails.df[,-ncol(tr.emails.df)], grouping = as.factor(tr.emails.df$Spam.Ind), 
+naive.bayes1 <- NaiveBayes(tr.emails.df[,-ncol(tr.emails.df)], 
+                           grouping = as.factor(tr.emails.df$Spam.Ind), 
                            prior=.2)
 
 # predicting using the naive bayes
@@ -209,15 +210,15 @@ rownames(t)=c('Predicted Ham','Predicted Spam')
 t
 
 # ROC curve
-
 pred=prediction(lda.p,emails.test.df$Spam.Ind)
 lda.perf=performance(pred,measure = "tpr", x.measure = "fpr")
 plot(lda.perf,col=rainbow(10),colorize=T)
 lda.auc=performance(pred,measure='auc')
 
+#------------------------
 
 ## VISUALIZATION
-png('roc_curve_svm')
+# ROC curves for the 3 kernels for SVM
 plot(perf,main="SVM",col='Red') 
 plot(perf1,col='Blue',add=T)
 plot(perf2,col='Green', main= "SVM",add=T)
@@ -226,10 +227,9 @@ legend(0.5,.6,
        lty=c(1,1),
        col=c('Red','Blue','Green')
        )
-dev.off()
 
 
-png('roc_curve_all')
+#ROC curve for comapring all the 3 models
 plot(nb.perf,main="COMPARISON OF ALL MODELS",col='Red',lwd=2) 
 plot(perf2,col='Blue',add=T,lwd=2)
 plot(lo.perf,col='Green', main= "SVM",add=T,lwd=2)
@@ -240,4 +240,4 @@ legend(0.5,.6,
        lwd=2,
        col=c('Red','Blue','Green','Yellow')
        )
-dev.off()
+
